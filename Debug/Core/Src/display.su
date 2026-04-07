@@ -1,3 +1,4 @@
 ../Core/Src/display.c:59:6:escreve_segmentos	16	static
-../Core/Src/display.c:78:6:display_scan	16	static
-../Core/Src/display.c:132:6:desliga_displays	16	static
+../Core/Src/display.c:78:6:display_atualiza	16	static
+../Core/Src/display.c:87:6:display_scan	16	static
+../Core/Src/display.c:141:6:desliga_displays	16	static

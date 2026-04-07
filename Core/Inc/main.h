@@ -53,7 +53,7 @@ extern "C" {
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
-
+void contagem(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
@@ -91,6 +91,10 @@ void Error_Handler(void);
 #define PB15_DISPLAY_DEZENA_GPIO_Port GPIOB
 #define PC6_DISPLAY_UNIDADE_Pin GPIO_PIN_6
 #define PC6_DISPLAY_UNIDADE_GPIO_Port GPIOC
+#define PB6_PIN_I2C1_SCL_Pin GPIO_PIN_6
+#define PB6_PIN_I2C1_SCL_GPIO_Port GPIOB
+#define PB7_PIN_I2C1_SDA_Pin GPIO_PIN_7
+#define PB7_PIN_I2C1_SDA_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 

@@ -11,12 +11,12 @@
 #include "main.h"
 
 uint8_t display = 0;
-uint8_t unidade = 6;
-uint8_t dezena = 5;
-uint8_t centena = 4;
-uint8_t milhar = 3;
-uint8_t dezena_milhar = 2;
-uint8_t centena_milhar = 1;
+uint8_t unidade = 0;
+uint8_t dezena = 0;
+uint8_t centena = 0;
+uint8_t milhar = 0;
+uint8_t dezena_milhar = 0;
+uint8_t centena_milhar = 0;
 
 
 const uint8_t tabela_display[] = {
@@ -73,6 +73,15 @@ void escreve_segmentos(uint8_t valor) {
                     (valor & 0x40) ? GPIO_PIN_SET : GPIO_PIN_RESET);
   HAL_GPIO_WritePin(SEG_DP_GPIO_PORT, SEG_DP_PIN,
                     (valor & 0x80) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+}
+
+void display_atualiza(uint32_t valor){
+  unidade = valor % 10;
+  dezena = (valor / 10) % 10;
+  centena = (valor / 100) % 10;
+  milhar = (valor / 1000) % 10;
+  dezena_milhar = (valor / 10000) % 10;
+  centena_milhar = (valor / 100000) % 10;
 }
 
 void display_scan() {

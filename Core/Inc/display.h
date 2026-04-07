@@ -14,5 +14,6 @@
 void display_scan(void);
 void escreve_segmentos(uint8_t valor);
 void desliga_displays(uint8_t d);
+void display_atualiza(uint32_t valor);
 
 #endif /* INC_DISPLAY_H_ */
