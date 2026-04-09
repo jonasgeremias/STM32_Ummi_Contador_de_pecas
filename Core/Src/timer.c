@@ -114,17 +114,15 @@ void tmr_3ms() {
   debounce_btns();
   debounce_entradas_digitais();
   btn_relogio_processado();
-  btn_max_processado();
-  btn_min_processado();
 }
 void tmr_5ms() { timer_flag_5ms = 1; }
 void tmr_10ms() { timer_flag_10ms = 1; }
 void tmr_50ms() {
-//   timer_flag_50ms = 1;
-//   if (btn_max_timeout > 0)
-//     btn_max_timeout--;
-//   if (btn_min_timeout > 0)
-//     btn_min_timeout--;
+  timer_flag_50ms = 1;
+  if (btn_max_timeout > 0)
+    btn_max_timeout--;
+  if (btn_min_timeout > 0)
+    btn_min_timeout--;
 }
 void tmr_100ms() { timer_flag_100ms = 1; }
 void tmr_500ms() { timer_flag_500ms = 1; }

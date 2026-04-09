@@ -58,6 +58,10 @@ void modo_setpoint(void);
 void modo_setpoint_obrigatorio(void);
 void contagem(void);
 
+void btn_relogio_processado();
+// void btn_max_processado();
+// void btn_min_processado();
+void le_botoes();
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
