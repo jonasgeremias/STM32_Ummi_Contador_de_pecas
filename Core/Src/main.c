@@ -28,6 +28,7 @@
 #include <defines.h>
 #include <display.h>
 #include <timer.h>
+#include <eeprom.h>
 
 /* USER CODE END Includes */
 
@@ -73,6 +74,8 @@ uint8_t saida_01 = 0;
 
 // flags auxiliares
 uint8_t flagaux_setpoint = 0;
+
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -119,11 +122,21 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+
   MX_I2C1_Init();
   MX_RTC_Init();
   /* USER CODE BEGIN 2 */
   splash_screen(200, 11, 14, 1, 0, 0, 1);
+  eeprom_init();
+  dados = eeprom_read();
   carrega_config();
+  if (dados.setpoint_obrigatorio_01 == 0xFFFF){
+    dados.setpoint_01 = 100;
+    dados.setpoint_obrigatorio_01 = 200;
+
+    eeprom_write(&dados);    
+  }
+  HAL_Delay(200);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -135,6 +148,7 @@ int main(void)
     
     le_botoes();
     modo_operacao();
+    eeprom_process();
     // contagem();
   }
   /* USER CODE END 3 */
@@ -372,9 +386,6 @@ void modo_operacao() {
     modo_setpoint_obrigatorio();
     break;
   }
-
-
-
 }
 
 void contagem() {
@@ -399,14 +410,22 @@ void contagem() {
 }
 
 void modo_setpoint() {
+  static uint32_t setpoint_guardado = 0;
 
   setpoint = setpoint_boost;
+
+  if (setpoint != setpoint_guardado) {
+    setpoint_guardado = setpoint;
+    dados.setpoint_01 = setpoint_guardado;
+    eeprom_write(&dados);
+  }
 
   if (setpoint > 999999) {
     setpoint = 0;
   } else if (setpoint < 0) {
     setpoint = 999999;
   }
+  
   display_atualiza(setpoint);
   salva_configs();
   // Implementar lógica para modo de configuração do setpoint
