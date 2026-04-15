@@ -60,6 +60,10 @@ extern volatile uint8_t entrada_digital_status;
 extern volatile uint8_t entrada_digital_borda_anterior;
 extern volatile uint16_t entrada_digital_contador;
 
+extern volatile uint8_t entrada_digital_02_status;
+extern volatile uint8_t entrada_digital_02_borda_anterior;
+extern volatile uint8_t entrada_digital_02_contador;
+
 //outras variaveis
 extern volatile uint16_t splash_timeout;
 

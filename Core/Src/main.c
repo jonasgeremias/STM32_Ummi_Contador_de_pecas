@@ -59,17 +59,20 @@ int32_t setpoint = 0;
 int32_t setpoint_boost = 0;
 int32_t setpoint_obrigatorio = 0;
 int32_t setpoint_obrigatorio_boost = 0;
+
+int32_t setpoint_proxima_verificacao = 0;
+int32_t setpoint_proxima_verificacao_obrigatoria = 0;
 // uint32_t setpoint = 100;
 
 // Variáveis para controle do modo
 uint8_t modo = 0;
 uint32_t setpoint_obrigatorio_contador = 0;
-
+uint8_t inspecao_obrigatoria = 0;
 // Variaveis display
 // volatile uint16_t splash_timeout = 0;
 
 // variaveis auxiliares
-//uint8_t saida_01 = 0;
+// uint8_t saida_01 = 0;
 
 // variaveis eeprom
 uint32_t eeprom_timer = 0;
@@ -78,6 +81,9 @@ uint32_t setpoint_obrigatorio_guardado = 0;
 // flags auxiliares
 uint8_t flagaux_setpoint = 0;
 uint8_t eeprom_flagaux_salvar = 0;
+
+uint8_t flagaux_verifica_pecas = 0;
+uint8_t flagaux_verifica_pecas_obrigatoria = 0;
 
 /* USER CODE END PV */
 
@@ -96,11 +102,10 @@ static void MX_RTC_Init(void);
 /* USER CODE END 0 */
 
 /**
-  * @brief  The application entry point.
-  * @retval int
-  */
-int main(void)
-{
+ * @brief  The application entry point.
+ * @retval int
+ */
+int main(void) {
 
   /* USER CODE BEGIN 1 */
 
@@ -108,7 +113,8 @@ int main(void)
 
   /* MCU Configuration--------------------------------------------------------*/
 
-  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+  /* Reset of all peripherals, Initializes the Flash interface and the Systick.
+   */
   HAL_Init();
 
   /* USER CODE BEGIN Init */
@@ -132,6 +138,8 @@ int main(void)
   eeprom_init();
   // dados = eeprom_read();
   carrega_config();
+  // setpoint_proxima_verificacao = contador_pecas + setpoint;
+
   // if (dados.setpoint_obrigatorio_01 == 0xFFFF){
   //   dados.setpoint_01 = 100;
   //   dados.setpoint_obrigatorio_01 = 200;
@@ -150,12 +158,12 @@ int main(void)
 
     le_botoes();
     modo_operacao();
-    if (eeprom_flagaux_salvar == 1){
+    if (eeprom_flagaux_salvar == 1) {
       eeprom_timer = HAL_GetTick();
       eeprom_flagaux_salvar = 2;
     }
     if (eeprom_flagaux_salvar == 2) {
-      if (HAL_GetTick() - eeprom_timer > 1000){
+      if (HAL_GetTick() - eeprom_timer > 1000) {
         eeprom_write(&dados);
         eeprom_flagaux_salvar = 0;
       }
@@ -167,23 +175,23 @@ int main(void)
 }
 
 /**
-  * @brief System Clock Configuration
-  * @retval None
-  */
-void SystemClock_Config(void)
-{
+ * @brief System Clock Configuration
+ * @retval None
+ */
+void SystemClock_Config(void) {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
   /** Configure the main internal regulator output voltage
-  */
+   */
   __HAL_RCC_PWR_CLK_ENABLE();
   __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
 
   /** Initializes the RCC Oscillators according to the specified parameters
-  * in the RCC_OscInitTypeDef structure.
-  */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_LSE;
+   * in the RCC_OscInitTypeDef structure.
+   */
+  RCC_OscInitStruct.OscillatorType =
+      RCC_OSCILLATORTYPE_HSI | RCC_OSCILLATORTYPE_LSE;
   RCC_OscInitStruct.LSEState = RCC_LSE_ON;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
@@ -194,33 +202,30 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
   RCC_OscInitStruct.PLL.PLLQ = 4;
   RCC_OscInitStruct.PLL.PLLR = 2;
-  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
-  {
+  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK) {
     Error_Handler();
   }
 
   /** Initializes the CPU, AHB and APB buses clocks
-  */
-  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+   */
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK |
+                                RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_3) != HAL_OK)
-  {
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_3) != HAL_OK) {
     Error_Handler();
   }
 }
 
 /**
-  * @brief I2C1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_I2C1_Init(void)
-{
+ * @brief I2C1 Initialization Function
+ * @param None
+ * @retval None
+ */
+static void MX_I2C1_Init(void) {
 
   /* USER CODE BEGIN I2C1_Init 0 */
 
@@ -238,23 +243,20 @@ static void MX_I2C1_Init(void)
   hi2c1.Init.OwnAddress2 = 0;
   hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
   hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
-  if (HAL_I2C_Init(&hi2c1) != HAL_OK)
-  {
+  if (HAL_I2C_Init(&hi2c1) != HAL_OK) {
     Error_Handler();
   }
   /* USER CODE BEGIN I2C1_Init 2 */
 
   /* USER CODE END I2C1_Init 2 */
-
 }
 
 /**
-  * @brief RTC Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_RTC_Init(void)
-{
+ * @brief RTC Initialization Function
+ * @param None
+ * @retval None
+ */
+static void MX_RTC_Init(void) {
 
   /* USER CODE BEGIN RTC_Init 0 */
 
@@ -265,7 +267,7 @@ static void MX_RTC_Init(void)
   /* USER CODE END RTC_Init 1 */
 
   /** Initialize RTC Only
-  */
+   */
   hrtc.Instance = RTC;
   hrtc.Init.HourFormat = RTC_HOURFORMAT_24;
   hrtc.Init.AsynchPrediv = 127;
@@ -273,26 +275,23 @@ static void MX_RTC_Init(void)
   hrtc.Init.OutPut = RTC_OUTPUT_DISABLE;
   hrtc.Init.OutPutPolarity = RTC_OUTPUT_POLARITY_HIGH;
   hrtc.Init.OutPutType = RTC_OUTPUT_TYPE_OPENDRAIN;
-  if (HAL_RTC_Init(&hrtc) != HAL_OK)
-  {
+  if (HAL_RTC_Init(&hrtc) != HAL_OK) {
     Error_Handler();
   }
   /* USER CODE BEGIN RTC_Init 2 */
 
   /* USER CODE END RTC_Init 2 */
-
 }
 
 /**
-  * @brief GPIO Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_GPIO_Init(void)
-{
+ * @brief GPIO Initialization Function
+ * @param None
+ * @retval None
+ */
+static void MX_GPIO_Init(void) {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
-/* USER CODE BEGIN MX_GPIO_Init_1 */
-/* USER CODE END MX_GPIO_Init_1 */
+  /* USER CODE BEGIN MX_GPIO_Init_1 */
+  /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOC_CLK_ENABLE();
@@ -300,52 +299,79 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, PA5_PIN_DISPLAY_A_Pin|PA6_PIN_DISPLAY_B_Pin|PA7_PIN_DISPLAY_C_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA,
+                    PA5_PIN_DISPLAY_A_Pin | PA6_PIN_DISPLAY_B_Pin |
+                        PA7_PIN_DISPLAY_C_Pin,
+                    GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, PC4_PIN_DISPLAY_D_Pin|PC5_PIN_DISPLAY_E_Pin|PC6_DISPLAY_UNIDADE_Pin|PC7_PIN_SAIDA_DIGITAL1_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOC,
+                    PC4_PIN_DISPLAY_D_Pin | PC5_PIN_DISPLAY_E_Pin |
+                        PC6_DISPLAY_UNIDADE_Pin | PC7_PIN_SAIDA_DIGITAL1_Pin |
+                        PC9_PIN_SAIDA_DIGITAL2_Pin,
+                    GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, PB0_PIN_DISPLAY_F_Pin|PB1_PIN_DISPLAY_G_Pin|PB2_PIN_DISPLAY_PD_Pin|PB10_DISPLAY_CENTENA_MILHAR_Pin
-                          |PB12_DISPLAY_DEZENA_MILHAR_Pin|PB13_DISPLAY_UNIDADE_MILHAR_Pin|PB14_DISPLAY_CENTENA_Pin|PB15_DISPLAY_DEZENA_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(
+      GPIOB,
+      PB0_PIN_DISPLAY_F_Pin | PB1_PIN_DISPLAY_G_Pin | PB2_PIN_DISPLAY_PD_Pin |
+          PB10_DISPLAY_CENTENA_MILHAR_Pin | PB12_DISPLAY_DEZENA_MILHAR_Pin |
+          PB13_DISPLAY_UNIDADE_MILHAR_Pin | PB14_DISPLAY_CENTENA_Pin |
+          PB15_DISPLAY_DEZENA_Pin,
+      GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : PC1_PIN_INPUT_MEMBRANA_01_Pin PC2_PIN_INPUT_MEMBRANA_02_Pin PC3_PIN_INPUT_MEMBRANA_03_Pin */
-  GPIO_InitStruct.Pin = PC1_PIN_INPUT_MEMBRANA_01_Pin|PC2_PIN_INPUT_MEMBRANA_02_Pin|PC3_PIN_INPUT_MEMBRANA_03_Pin;
+  /*Configure GPIO pins : PC1_PIN_INPUT_MEMBRANA_01_Pin
+   * PC2_PIN_INPUT_MEMBRANA_02_Pin PC3_PIN_INPUT_MEMBRANA_03_Pin */
+  GPIO_InitStruct.Pin = PC1_PIN_INPUT_MEMBRANA_01_Pin |
+                        PC2_PIN_INPUT_MEMBRANA_02_Pin |
+                        PC3_PIN_INPUT_MEMBRANA_03_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PA5_PIN_DISPLAY_A_Pin PA6_PIN_DISPLAY_B_Pin PA7_PIN_DISPLAY_C_Pin */
-  GPIO_InitStruct.Pin = PA5_PIN_DISPLAY_A_Pin|PA6_PIN_DISPLAY_B_Pin|PA7_PIN_DISPLAY_C_Pin;
+  /*Configure GPIO pins : PA5_PIN_DISPLAY_A_Pin PA6_PIN_DISPLAY_B_Pin
+   * PA7_PIN_DISPLAY_C_Pin */
+  GPIO_InitStruct.Pin =
+      PA5_PIN_DISPLAY_A_Pin | PA6_PIN_DISPLAY_B_Pin | PA7_PIN_DISPLAY_C_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PC4_PIN_DISPLAY_D_Pin PC5_PIN_DISPLAY_E_Pin PC6_DISPLAY_UNIDADE_Pin PC7_PIN_SAIDA_DIGITAL1_Pin */
-  GPIO_InitStruct.Pin = PC4_PIN_DISPLAY_D_Pin|PC5_PIN_DISPLAY_E_Pin|PC6_DISPLAY_UNIDADE_Pin|PC7_PIN_SAIDA_DIGITAL1_Pin;
+  /*Configure GPIO pins : PC4_PIN_DISPLAY_D_Pin PC5_PIN_DISPLAY_E_Pin
+     PC6_DISPLAY_UNIDADE_Pin PC7_PIN_SAIDA_DIGITAL1_Pin
+                           PC9_PIN_SAIDA_DIGITAL2_Pin */
+  GPIO_InitStruct.Pin = PC4_PIN_DISPLAY_D_Pin | PC5_PIN_DISPLAY_E_Pin |
+                        PC6_DISPLAY_UNIDADE_Pin | PC7_PIN_SAIDA_DIGITAL1_Pin |
+                        PC9_PIN_SAIDA_DIGITAL2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PB0_PIN_DISPLAY_F_Pin PB1_PIN_DISPLAY_G_Pin PB2_PIN_DISPLAY_PD_Pin PB10_DISPLAY_CENTENA_MILHAR_Pin
-                           PB12_DISPLAY_DEZENA_MILHAR_Pin PB13_DISPLAY_UNIDADE_MILHAR_Pin PB14_DISPLAY_CENTENA_Pin PB15_DISPLAY_DEZENA_Pin */
-  GPIO_InitStruct.Pin = PB0_PIN_DISPLAY_F_Pin|PB1_PIN_DISPLAY_G_Pin|PB2_PIN_DISPLAY_PD_Pin|PB10_DISPLAY_CENTENA_MILHAR_Pin
-                          |PB12_DISPLAY_DEZENA_MILHAR_Pin|PB13_DISPLAY_UNIDADE_MILHAR_Pin|PB14_DISPLAY_CENTENA_Pin|PB15_DISPLAY_DEZENA_Pin;
+  /*Configure GPIO pins : PB0_PIN_DISPLAY_F_Pin PB1_PIN_DISPLAY_G_Pin
+     PB2_PIN_DISPLAY_PD_Pin PB10_DISPLAY_CENTENA_MILHAR_Pin
+                           PB12_DISPLAY_DEZENA_MILHAR_Pin
+     PB13_DISPLAY_UNIDADE_MILHAR_Pin PB14_DISPLAY_CENTENA_Pin
+     PB15_DISPLAY_DEZENA_Pin */
+  GPIO_InitStruct.Pin =
+      PB0_PIN_DISPLAY_F_Pin | PB1_PIN_DISPLAY_G_Pin | PB2_PIN_DISPLAY_PD_Pin |
+      PB10_DISPLAY_CENTENA_MILHAR_Pin | PB12_DISPLAY_DEZENA_MILHAR_Pin |
+      PB13_DISPLAY_UNIDADE_MILHAR_Pin | PB14_DISPLAY_CENTENA_Pin |
+      PB15_DISPLAY_DEZENA_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PB8_PIN_ENTRADA_01_Pin */
-  GPIO_InitStruct.Pin = PB8_PIN_ENTRADA_01_Pin;
+  /*Configure GPIO pins : PB8_PIN_ENTRADA_01_Pin PB9_PIN_ENTRADA_02_Pin */
+  GPIO_InitStruct.Pin = PB8_PIN_ENTRADA_01_Pin | PB9_PIN_ENTRADA_02_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-  HAL_GPIO_Init(PB8_PIN_ENTRADA_01_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-/* USER CODE BEGIN MX_GPIO_Init_2 */
-/* USER CODE END MX_GPIO_Init_2 */
+  /* USER CODE BEGIN MX_GPIO_Init_2 */
+  /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
@@ -400,6 +426,46 @@ void modo_operacao() {
   }
 }
 
+// void contagem() {
+//   static uint8_t trava = 0;
+
+//   if (contador_pecas > 999999) {
+//     contador_pecas = 0;
+//   } else if (contador_pecas < 0) {
+//     contador_pecas = 999999;
+//   }
+
+//   display_atualiza(contador_pecas);
+//   if ((entrada_digital_status) && (!trava)) {
+//     trava = 1;
+//     contador_pecas++;
+//     contador_pecas_anterior = contador_pecas;
+//   }
+
+//   if (contador_pecas >= setpoint) {
+//     HAL_GPIO_WritePin(SAIDA_01_PORT, SAIDA_01, HIGH);
+//     inspecao_obrigatoria = 1;
+//   }
+//   if ((contador_pecas >= setpoint_obrigatorio) && (inspecao_obrigatoria ==
+//   1)) {
+//     HAL_GPIO_WritePin(SAIDA_02_PORT, SAIDA_02, HIGH);
+//     inspecao_obrigatoria = 2;
+//   }
+
+//   if (!entrada_digital_status) {
+//     trava = 0;
+//   }
+
+//   if ((entrada_digital_02_status) && (inspecao_obrigatoria == 2)) {
+//     inspecao_obrigatoria = 0;
+//     HAL_GPIO_WritePin(SAIDA_01_PORT, SAIDA_01, LOW);
+//     HAL_GPIO_WritePin(SAIDA_02_PORT, SAIDA_02, LOW);
+//   }
+//   if (contador_pecas_anterior != contador_pecas) {
+//     salva_configs();
+//   }
+// }
+
 void contagem() {
   static uint8_t trava = 0;
 
@@ -410,22 +476,58 @@ void contagem() {
   }
 
   display_atualiza(contador_pecas);
+
+  // CONTAGEM COM TRAVA
   if ((entrada_digital_status) && (!trava)) {
     trava = 1;
     contador_pecas++;
     contador_pecas_anterior = contador_pecas;
   }
 
-  if (contador_pecas > setpoint) {
-    SAIDA_01 = 1;
-  } else {
-    SAIDA_01 = 0;
-  }
-
   if (!entrada_digital_status) {
     trava = 0;
   }
 
+  // ==============================
+  // LÓGICA DE SAÍDAS (CORRIGIDA)
+  // ==============================
+
+  // // ESTÁGIO 1 → setpoint normal
+  // if ((contador_pecas >= setpoint) && (inspecao_obrigatoria == 0)) {
+  //   HAL_GPIO_WritePin(SAIDA_01_PORT, SAIDA_01, HIGH);
+  //   inspecao_obrigatoria = 1;
+  // }
+
+  if (contador_pecas >= setpoint_proxima_verificacao) {
+    HAL_GPIO_WritePin(SAIDA_01_PORT, SAIDA_01, HIGH);
+    inspecao_obrigatoria = 1;
+  }
+
+  // ESTÁGIO 2 → setpoint obrigatório
+  if ((contador_pecas >= setpoint_proxima_verificacao_obrigatoria) && (inspecao_obrigatoria == 1)) {
+    HAL_GPIO_WritePin(SAIDA_02_PORT, SAIDA_02, HIGH);
+    inspecao_obrigatoria = 2;
+  }
+
+  // RESET (somente após completar ciclo)
+  if ((entrada_digital_02_status) && (!trava)) {
+    if (inspecao_obrigatoria == 1) {
+      HAL_GPIO_WritePin(SAIDA_01_PORT, SAIDA_01, LOW);
+      inspecao_obrigatoria = 0;
+    } else if (inspecao_obrigatoria == 2) {
+      inspecao_obrigatoria = 0;
+      HAL_GPIO_WritePin(SAIDA_01_PORT, SAIDA_01, LOW);
+      HAL_GPIO_WritePin(SAIDA_02_PORT, SAIDA_02, LOW);
+    }
+
+    // HAL_GPIO_WritePin(SAIDA_02_PORT, SAIDA_02, LOW);
+
+    // 👉 MUITO IMPORTANTE: reinicia os ciclos
+    setpoint_proxima_verificacao = contador_pecas + setpoint;
+    setpoint_proxima_verificacao_obrigatoria = contador_pecas + setpoint_obrigatorio;
+  }
+
+  // SALVAÇÃO
   if (contador_pecas_anterior != contador_pecas) {
     salva_configs();
   }
@@ -441,6 +543,7 @@ void modo_setpoint() {
     dados.setpoint_01 = setpoint_guardado;
     // eeprom_write(&dados);
     eeprom_flagaux_salvar = 1;
+    setpoint_proxima_verificacao = contador_pecas + setpoint;
   }
 
   if (setpoint > 999999) {
@@ -453,27 +556,6 @@ void modo_setpoint() {
   // salva_configs();
   //  Implementar lógica para modo de configuração do setpoint
 }
-
-// void modo_setpoint_obrigatorio() {
-
-//   setpoint_obrigatorio = setpoint_obrigatorio_boost;
-
-//   // if (setpoint_obrigatorio != setpoint_obrigatorio_guardado) {
-//   //   setpoint_obrigatorio_guardado = setpoint_obrigatorio;
-//   //   dados.setpoint_obrigatorio_01 = setpoint_obrigatorio_guardado;
-//   //   // eeprom_write(&dados);
-//   //   eeprom_flagaux_salvar = 1;
-//   // }
-
-//   if (dados.setpoint_obrigatorio_01 != setpoint_obrigatorio) {
-//     dados.setpoint_obrigatorio_01 = setpoint_obrigatorio;
-//     // eeprom_write(&dados);
-//     eeprom_flagaux_salvar = 1;
-//   }
-
-//   display_atualiza(setpoint_obrigatorio);
-//   // salva_configs();
-// }
 
 void modo_setpoint_obrigatorio() {
   static uint32_t ultimo_valor = 0;
@@ -491,6 +573,9 @@ void modo_setpoint_obrigatorio() {
     if (dados.setpoint_obrigatorio_01 != setpoint_obrigatorio) {
       dados.setpoint_obrigatorio_01 = setpoint_obrigatorio;
       eeprom_flagaux_salvar = 1;
+
+      setpoint_proxima_verificacao_obrigatoria =
+          contador_pecas + setpoint_obrigatorio;
     }
   }
 
@@ -530,6 +615,199 @@ void btn_relogio_processado(void) {
 
   btn_relogio_borda_anterior = btn_relogio_status;
 }
+
+// void le_botoes() {
+//   static uint8_t max_press = 0;
+//   static uint8_t min_press = 0;
+
+//   if (flagaux_setpoint == 1) {
+//     if (setpoint_boost > 999999) {
+//       setpoint_boost = 0;
+//     } else if (setpoint_boost < 0) {
+//       setpoint_boost = 999999;
+//     }
+//   }
+//   if (flagaux_setpoint == 2) {
+//     if (setpoint_obrigatorio_boost > 999999) {
+//       setpoint_obrigatorio_boost = 0;
+//     } else if (setpoint_obrigatorio_boost < 0) {
+//       setpoint_obrigatorio_boost = 999999;
+//     }
+//   }
+
+//   if (btn_max_status)
+//     max_press = 1;
+
+//   if (btn_min_status)
+//     min_press = 1;
+
+//   if (max_press && min_press) {
+
+//     if (flagaux_setpoint == 1) {
+//       setpoint_boost = 0;
+//     } else if (flagaux_setpoint == 2) {
+//       setpoint_obrigatorio_boost = 0;
+//     }
+
+//     max_press = 0;
+//     min_press = 0;
+//   }
+
+//   // reset quando solta ambos
+//   if (!btn_max_status && !btn_min_status) {
+//     max_press = 0;
+//     min_press = 0;
+//   }
+
+//   if (btn_max_status) {
+//     if (btn_max_timeout == 0) {
+//       if (btn_max_turbo >= 25) {
+//         if (flagaux_setpoint == 0) {
+//           contador_pecas += 100000;
+//         } else if (flagaux_setpoint == 1) {
+//           setpoint_boost += 100000;
+//         } else if (flagaux_setpoint == 2) {
+//           setpoint_obrigatorio_boost += 100000;
+//         }
+//       } else if (btn_max_turbo >= 20) {
+//         if (flagaux_setpoint == 0) {
+//           contador_pecas += 10000;
+//         } else if (flagaux_setpoint == 1) {
+//           setpoint_boost += 10000;
+//         } else if (flagaux_setpoint == 2) {
+//           setpoint_obrigatorio_boost += 10000;
+//         }
+//       } else if (btn_max_turbo >= 15) {
+//         if (flagaux_setpoint == 0) {
+//           contador_pecas += 1000;
+//         } else if (flagaux_setpoint == 1) {
+//           setpoint_boost += 1000;
+//         } else if (flagaux_setpoint == 2) {
+//           setpoint_obrigatorio_boost += 1000;
+//         }
+//       } else if (btn_max_turbo >= 10) {
+//         if (flagaux_setpoint == 0) {
+//           contador_pecas += 100;
+//         } else if (flagaux_setpoint == 1) {
+//           setpoint_boost += 100;
+//         } else if (flagaux_setpoint == 2) {
+//           setpoint_obrigatorio_boost += 100;
+//         }
+//       } else if (btn_max_turbo >= 8) {
+//         if (flagaux_setpoint == 0) {
+//           contador_pecas += 50;
+//         } else if (flagaux_setpoint == 1) {
+//           setpoint_boost += 50;
+//         } else if (flagaux_setpoint == 2) {
+//           setpoint_obrigatorio_boost += 50;
+//         }
+//       } else if (btn_max_turbo >= 5) {
+//         if (flagaux_setpoint == 0) {
+//           contador_pecas += 10;
+//         } else if (flagaux_setpoint == 1) {
+//           setpoint_boost += 10;
+//         } else if (flagaux_setpoint == 2) {
+//           setpoint_obrigatorio_boost += 10;
+//         }
+//       } else {
+//         if (flagaux_setpoint == 0) {
+//           contador_pecas++;
+//         }
+//         if (flagaux_setpoint == 1) {
+//           setpoint_boost++;
+//         } else if (flagaux_setpoint == 2) {
+//           setpoint_obrigatorio_boost++;
+//         }
+//       }
+//       if (btn_max_turbo < 25) {
+//         btn_max_turbo++;
+//       }
+//       if (btn_max_turbo >= 5) {
+//         btn_max_timeout = TURBO_LEVEL2;
+//       } else {
+//         btn_max_timeout = TURBO_LEVEL1;
+//       }
+//     }
+//   } else {
+//     btn_max_turbo = 0;
+//   }
+
+//   if (btn_min_status) {
+//     if (btn_min_timeout == 0) {
+//       if (btn_min_turbo >= 25) {
+//         if (flagaux_setpoint == 0) {
+//           contador_pecas -= 100000;
+//         } else if (flagaux_setpoint == 1) {
+//           setpoint_boost -= 100000;
+//         } else if (flagaux_setpoint == 2) {
+//           setpoint_obrigatorio_boost -= 100000;
+//         }
+//       } else if (btn_min_turbo >= 20) {
+//         if (flagaux_setpoint == 0) {
+//           contador_pecas -= 10000;
+//         } else if (flagaux_setpoint == 1) {
+//           setpoint_boost -= 10000;
+//         } else if (flagaux_setpoint == 2) {
+//           setpoint_obrigatorio_boost -= 10000;
+//         }
+//       } else if (btn_min_turbo >= 15) {
+//         if (flagaux_setpoint == 0) {
+//           contador_pecas -= 1000;
+//         } else if (flagaux_setpoint == 1) {
+//           setpoint_boost -= 1000;
+//         } else if (flagaux_setpoint == 2) {
+//           setpoint_obrigatorio_boost -= 1000;
+//         }
+//       } else if (btn_min_turbo >= 10) {
+//         if (flagaux_setpoint == 0) {
+//           contador_pecas -= 100;
+//         } else if (flagaux_setpoint == 1) {
+//           setpoint_boost -= 100;
+//         } else if (flagaux_setpoint == 2) {
+//           setpoint_obrigatorio_boost -= 100;
+//         }
+//       } else if (btn_min_turbo >= 8) {
+//         if (flagaux_setpoint == 0) {
+//           contador_pecas -= 50;
+//         } else if (flagaux_setpoint == 1) {
+//           setpoint_boost -= 50;
+//         } else if (flagaux_setpoint == 2) {
+//           setpoint_obrigatorio_boost -= 50;
+//         }
+//       } else if (btn_min_turbo >= 5) {
+//         if (flagaux_setpoint == 0) {
+//           contador_pecas -= 10;
+//         } else if (flagaux_setpoint == 1) {
+//           setpoint_boost -= 10;
+//         } else if (flagaux_setpoint == 2) {
+//           setpoint_obrigatorio_boost -= 10;
+//         }
+//       } else {
+//         if (flagaux_setpoint == 0) {
+//           contador_pecas--;
+//         } else if (flagaux_setpoint == 1) {
+//           setpoint_boost--;
+//         } else if (flagaux_setpoint == 2) {
+//           setpoint_obrigatorio_boost--;
+//         }
+//       }
+//       if (btn_min_turbo < 25) {
+//         btn_min_turbo++;
+//       }
+//       if (btn_min_turbo >= 5) {
+//         btn_min_timeout = TURBO_LEVEL2;
+//       } else {
+//         btn_min_timeout = TURBO_LEVEL1;
+//       }
+//     }
+//   } else {
+//     btn_min_turbo = 0;
+//   }
+
+//   btn_max_borda_anterior = btn_max_status;
+//   btn_min_borda_anterior = btn_min_status;
+//   btn_relogio_borda_anterior = btn_relogio_status;
+// }
 
 void le_botoes() {
   static uint8_t max_press = 0;
@@ -577,57 +855,42 @@ void le_botoes() {
   if (btn_max_status) {
     if (btn_max_timeout == 0) {
       if (btn_max_turbo >= 25) {
-        if (flagaux_setpoint == 0) {
-          contador_pecas += 100000;
-        } else if (flagaux_setpoint == 1) {
+        if (flagaux_setpoint == 1) {
           setpoint_boost += 100000;
         } else if (flagaux_setpoint == 2) {
           setpoint_obrigatorio_boost += 100000;
         }
       } else if (btn_max_turbo >= 20) {
-        if (flagaux_setpoint == 0) {
-          contador_pecas += 10000;
-        } else if (flagaux_setpoint == 1) {
+        if (flagaux_setpoint == 1) {
           setpoint_boost += 10000;
         } else if (flagaux_setpoint == 2) {
           setpoint_obrigatorio_boost += 10000;
         }
       } else if (btn_max_turbo >= 15) {
-        if (flagaux_setpoint == 0) {
-          contador_pecas += 1000;
-        } else if (flagaux_setpoint == 1) {
+        if (flagaux_setpoint == 1) {
           setpoint_boost += 1000;
         } else if (flagaux_setpoint == 2) {
           setpoint_obrigatorio_boost += 1000;
         }
       } else if (btn_max_turbo >= 10) {
-        if (flagaux_setpoint == 0) {
-          contador_pecas += 100;
-        } else if (flagaux_setpoint == 1) {
+        if (flagaux_setpoint == 1) {
           setpoint_boost += 100;
         } else if (flagaux_setpoint == 2) {
           setpoint_obrigatorio_boost += 100;
         }
       } else if (btn_max_turbo >= 8) {
-        if (flagaux_setpoint == 0) {
-          contador_pecas += 50;
-        } else if (flagaux_setpoint == 1) {
+        if (flagaux_setpoint == 1) {
           setpoint_boost += 50;
         } else if (flagaux_setpoint == 2) {
           setpoint_obrigatorio_boost += 50;
         }
       } else if (btn_max_turbo >= 5) {
-        if (flagaux_setpoint == 0) {
-          contador_pecas += 10;
-        } else if (flagaux_setpoint == 1) {
+        if (flagaux_setpoint == 1) {
           setpoint_boost += 10;
         } else if (flagaux_setpoint == 2) {
           setpoint_obrigatorio_boost += 10;
         }
       } else {
-        if (flagaux_setpoint == 0) {
-          contador_pecas++;
-        }
         if (flagaux_setpoint == 1) {
           setpoint_boost++;
         } else if (flagaux_setpoint == 2) {
@@ -650,57 +913,43 @@ void le_botoes() {
   if (btn_min_status) {
     if (btn_min_timeout == 0) {
       if (btn_min_turbo >= 25) {
-        if (flagaux_setpoint == 0) {
-          contador_pecas -= 100000;
-        } else if (flagaux_setpoint == 1) {
+        if (flagaux_setpoint == 1) {
           setpoint_boost -= 100000;
         } else if (flagaux_setpoint == 2) {
           setpoint_obrigatorio_boost -= 100000;
         }
       } else if (btn_min_turbo >= 20) {
-        if (flagaux_setpoint == 0) {
-          contador_pecas -= 10000;
-        } else if (flagaux_setpoint == 1) {
+        if (flagaux_setpoint == 1) {
           setpoint_boost -= 10000;
         } else if (flagaux_setpoint == 2) {
           setpoint_obrigatorio_boost -= 10000;
         }
       } else if (btn_min_turbo >= 15) {
-        if (flagaux_setpoint == 0) {
-          contador_pecas -= 1000;
-        } else if (flagaux_setpoint == 1) {
+        if (flagaux_setpoint == 1) {
           setpoint_boost -= 1000;
         } else if (flagaux_setpoint == 2) {
           setpoint_obrigatorio_boost -= 1000;
         }
       } else if (btn_min_turbo >= 10) {
-        if (flagaux_setpoint == 0) {
-          contador_pecas -= 100;
-        } else if (flagaux_setpoint == 1) {
+        if (flagaux_setpoint == 1) {
           setpoint_boost -= 100;
         } else if (flagaux_setpoint == 2) {
           setpoint_obrigatorio_boost -= 100;
         }
       } else if (btn_min_turbo >= 8) {
-        if (flagaux_setpoint == 0) {
-          contador_pecas -= 50;
-        } else if (flagaux_setpoint == 1) {
+        if (flagaux_setpoint == 1) {
           setpoint_boost -= 50;
         } else if (flagaux_setpoint == 2) {
           setpoint_obrigatorio_boost -= 50;
         }
       } else if (btn_min_turbo >= 5) {
-        if (flagaux_setpoint == 0) {
-          contador_pecas -= 10;
-        } else if (flagaux_setpoint == 1) {
+        if (flagaux_setpoint == 1) {
           setpoint_boost -= 10;
         } else if (flagaux_setpoint == 2) {
           setpoint_obrigatorio_boost -= 10;
         }
       } else {
-        if (flagaux_setpoint == 0) {
-          contador_pecas--;
-        } else if (flagaux_setpoint == 1) {
+        if (flagaux_setpoint == 1) {
           setpoint_boost--;
         } else if (flagaux_setpoint == 2) {
           setpoint_obrigatorio_boost--;
@@ -749,7 +998,7 @@ void carrega_config() {
   // eeprom_read(&dados);
   dados = eeprom_read();
 
-  //protecao para lixo
+  // protecao para lixo
   if (dados.setpoint_01 > 999999) {
     dados.setpoint_01 = 0;
   }
@@ -757,7 +1006,7 @@ void carrega_config() {
     dados.setpoint_obrigatorio_01 = 0;
   }
 
-  //joga para variaveis do sistema
+  // joga para variaveis do sistema
   setpoint = dados.setpoint_01;
   setpoint_boost = setpoint;
 
@@ -768,11 +1017,10 @@ void carrega_config() {
 /* USER CODE END 4 */
 
 /**
-  * @brief  This function is executed in case of error occurrence.
-  * @retval None
-  */
-void Error_Handler(void)
-{
+ * @brief  This function is executed in case of error occurrence.
+ * @retval None
+ */
+void Error_Handler(void) {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
   __disable_irq();
@@ -781,16 +1029,15 @@ void Error_Handler(void)
   /* USER CODE END Error_Handler_Debug */
 }
 
-#ifdef  USE_FULL_ASSERT
+#ifdef USE_FULL_ASSERT
 /**
-  * @brief  Reports the name of the source file and the source line number
-  *         where the assert_param error has occurred.
-  * @param  file: pointer to the source file name
-  * @param  line: assert_param error line source number
-  * @retval None
-  */
-void assert_failed(uint8_t *file, uint32_t line)
-{
+ * @brief  Reports the name of the source file and the source line number
+ *         where the assert_param error has occurred.
+ * @param  file: pointer to the source file name
+ * @param  line: assert_param error line source number
+ * @retval None
+ */
+void assert_failed(uint8_t *file, uint32_t line) {
   /* USER CODE BEGIN 6 */
   /* User can add his own implementation to report the file name and line
      number, ex: printf("Wrong parameters value: file %s on line %d\r\n", file,

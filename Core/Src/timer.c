@@ -62,6 +62,10 @@ volatile uint16_t entrada_digital_contador = 0;
 volatile uint8_t entrada_digital_status = 0;
 volatile uint8_t entrada_digital_borda_anterior = 0;
 
+volatile uint8_t entrada_digital_02_contador = 0;
+volatile uint8_t entrada_digital_02_status = 0;
+volatile uint8_t entrada_digital_02_borda_anterior = 0;
+
 // outras variaveis
 
 void mainIsr(void) {
@@ -186,5 +190,16 @@ void debounce_entradas_digitais() {
     entrada_digital_contador = 0;
     entrada_digital_status = 0;
   }
+
+  if (HAL_GPIO_ReadPin(INPUT_02_PORT, INPUT_02) == HIGH) {
+    if (entrada_digital_02_contador < 3)
+      entrada_digital_02_contador++;
+    else
+      entrada_digital_02_status = 1;
+  } else {
+    entrada_digital_02_contador = 0;
+    entrada_digital_02_status = 0;
+  }
+
 }
 
